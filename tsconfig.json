@@ -1,0 +1,4 @@
+{
+  "compilerOptions": { "target": "es6", "strict": true },
+  "files": [ "userscript.ts" ]
+}
