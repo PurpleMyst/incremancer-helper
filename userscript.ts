@@ -9,7 +9,12 @@ const waitForElement = <T>(selector: () => T | undefined | null): Promise<T> =>
       observer.disconnect();
       resolve(element);
     });
-    observer.observe(document, { childList: true, subtree: true, characterData: true, attributes: true });
+    observer.observe(document, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true
+    });
   });
 
 // Find an element in a collection by its textContent
@@ -18,6 +23,13 @@ const findByText = <T extends Element>(
   text: string
 ): T | undefined => Array.from(elements).find(el => el.textContent === text);
 
+const findByRegExp = <T extends Element>(
+  elements: HTMLCollectionOf<T>,
+  rgx: RegExp
+): T | undefined =>
+  Array.from(elements).find(
+    el => el.textContent !== null && rgx.test(el.textContent)
+  );
 
 // Autoclick a spell everytime its not on cooldown
 // TODO: Use more specific MutationObserver to improve performance;
@@ -33,7 +45,6 @@ const autoclickSpell = async (spellName: string) => {
 
   // If there's no timer, the spell isn't on cooldown and we can click it
   if (timer == null) {
-    console.info(`Cast ${spellName}`);
     spell.click();
 
     // Wait for the timer to appear
@@ -41,51 +52,69 @@ const autoclickSpell = async (spellName: string) => {
   } else {
     // If we have a timer, its text will represent how long the cooldown is
     const cooldown = +(timer.textContent ?? 0);
-    console.info(`Sleeping for ${cooldown} seconds for ${spellName} ...`);
     setTimeout(autoclickSpell, cooldown * MS_PER_S, spellName);
   }
 };
 
 // Autobuy an upgrade
 const autobuy = (upgrade: Element) => {
-  console.info(`Autobuying ${upgrade.firstElementChild?.textContent}`);
   Array.from(upgrade.getElementsByTagName("button"))
     .find(el => el.textContent === "Auto")
     ?.click();
 };
 
-// Open the shop, select all tabs and autobuy every upgrade
-const autobuyAll = async () => {
+const openPanel = async (name: RegExp) => {
   const buttons = await waitForElement(() =>
     document.getElementsByClassName("buttons").item(0)
   );
 
-  const shopButton = await waitForElement(() =>
-    findByText(buttons.getElementsByTagName("button"), "Shop")
+  const panelButton = await waitForElement(() =>
+    findByRegExp(buttons.getElementsByTagName("button"), name)
   );
-  shopButton.click();
+
+  panelButton.click();
+};
+
+const closePanel = async () => {
+  (
+    await waitForElement(() => {
+      return findByText(document.getElementsByTagName("button"), "Close");
+    })
+  ).click();
+};
+
+// Open the shop, select all tabs and autobuy every upgrade
+const autobuyAll = async () => {
+  openPanel(/Shop/);
 
   const tabs = await waitForElement(() =>
     document.getElementsByClassName("tabs").item(0)
   );
 
-  for (let tab of tabs.children) {
+  for (const tab of tabs.getElementsByTagName("button")) {
     if (tab.textContent === "Complete") continue;
-    (tab as HTMLButtonElement).click();
+    tab.click();
     for (const upgrade of document.getElementsByClassName("upgrade"))
       autobuy(upgrade);
   }
 
-  const closeButton = await waitForElement(() =>
-    findByText(document.getElementsByTagName("button"), "Close")
-  );
-  closeButton.click();
+  closePanel();
+};
+
+const autoconstruct = async () => {
+  openPanel(/Construction/);
+  (
+    await waitForElement(() =>
+      findByText(document.getElementsByTagName("button"), "Auto Off")
+    )
+  ).click();
+  closePanel();
 };
 
 autoclickSpell("Time Warp");
 autoclickSpell("Energy Charge");
 autoclickSpell("Earth Freeze");
-autobuyAll();
+autobuyAll().then(() => autoconstruct());
 
 // Autostart the game
 waitForElement(() =>
