@@ -18,7 +18,12 @@ const findByText = <T extends Element>(
   text: string
 ): T | undefined => Array.from(elements).find(el => el.textContent === text);
 
+
 // Autoclick a spell everytime its not on cooldown
+// TODO: Use more specific MutationObserver to improve performance;
+// We can use a MutationObserver on `.spells` to wait for spells to appear if
+// they are not present then we can use a second MutationObserver on the spell
+// to wait for the timer to disappear
 const autoclickSpell = async (spellName: string) => {
   const spell = await waitForElement(() =>
     findByText(document.getElementsByTagName("span"), spellName)
