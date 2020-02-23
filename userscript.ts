@@ -9,7 +9,7 @@ const waitForElement = <T>(selector: () => T | undefined | null): Promise<T> =>
       observer.disconnect();
       resolve(element);
     });
-    observer.observe(document, { childList: true, subtree: true });
+    observer.observe(document, { childList: true, subtree: true, characterData: true, attributes: true });
   });
 
 // Find an element in a collection by its textContent
